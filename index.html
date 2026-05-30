@@ -1,0 +1,911 @@
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Happy Birthday Nancy 💗</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="theme-color" content="#000000" />
+		<link rel="shortcut icon" type="image/png" href="images/favicon.png" />
+		<link rel="icon" type="image/png" href="images/favicon.png" />
+		<link rel="apple-touch-icon-precomposed" href="images/favicon.png" />
+		<!-- Thư viện CSS Clip Path Helper -->
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/clippy.js/1.0.0/clippy.min.css" />
+		<style>
+			/* Khu vực demo ảnh dùng clip-path (tròn + trái tim) */
+			.shape-gallery {
+				display: flex;
+				gap: 24px;
+				justify-content: center;
+				align-items: center;
+				padding: 16px;
+			}
+			.shape-card {
+				width: 240px;
+				height: 240px;
+				position: relative;
+			}
+			.shape-card img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				display: block;
+			}
+			/* Ảnh tròn */
+			.shape-circle img {
+				border-radius: 50%;
+			}
+			/* Ảnh trái tim */
+			.shape-heart img {
+				clip-path: path("M 120 224 C 8 144 0 72 60 40 C 96 24 120 40 120 56 C 120 40 144 24 180 40 C 240 72 232 144 120 224 Z");
+				-webkit-clip-path: path("M 120 224 C 8 144 0 72 60 40 C 96 24 120 40 120 56 C 120 40 144 24 180 40 C 240 72 232 144 120 224 Z");
+			}
+			/* Fallback mask cho trình duyệt cũ */
+			@supports not (clip-path: path("M 120 224 C 8 144 0 72 60 40 C 96 24 120 40 120 56 C 120 40 144 24 180 40 C 240 72 232 144 120 224 Z")) {
+				.shape-heart img {
+					mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><path d="M120 224 C8 144 0 72 60 40 C96 24 120 40 120 56 C120 40 144 24 180 40 C240 72 232 144 120 224 Z" fill="white"/></svg>');
+					-webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><path d="M120 224 C8 144 0 72 60 40 C96 24 120 40 120 56 C120 40 144 24 180 40 C240 72 232 144 120 224 Z" fill="white"/></svg>');
+					mask-size: contain;
+					-webkit-mask-size: contain;
+					mask-repeat: no-repeat;
+					-webkit-mask-repeat: no-repeat;
+				}
+			}
+
+			/* Layer chứa lời chúc bay trên nền pháo hoa */
+			.wishes-layer {
+				position: absolute;
+				inset: 0;
+				z-index: 10; /* Hiển thị trên canvas */
+				pointer-events: auto; /* Cho phép nhận pointer events để xoay không gian */
+				transform-origin: center center;
+				transform-style: preserve-3d; /* Cho phép 3D transform */
+				will-change: transform; /* Tối ưu performance */
+			}
+
+			/* Tắt transition khi đang drag để giảm lag */
+			.wishes-layer.dragging {
+				transition: none;
+			}
+
+			/* Wrapper anim bay lên (dùng transform riêng) */
+			.wish-wrapper {
+				position: absolute;
+				bottom: -3rem;
+				left: 50%;
+				transform: translateX(-50%) translateY(0);
+				opacity: 0;
+				pointer-events: none; /* bản thân wrapper không nhận sự kiện */
+			}
+
+			/* Câu chúc màu hồng phát sáng, có thể xoay / thu phóng bằng tay */
+			.wish-text {
+				display: inline-block;
+				font-size: 1.1rem;
+				padding: 0.4rem 1rem;
+				border-radius: 999px;
+				color: #ff9ad9;
+				text-shadow:
+					0 0 6px rgba(255, 105, 180, 0.9),
+					0 0 18px rgba(255, 20, 147, 0.8);
+				background: rgba(0, 0, 0, 0.3);
+				border: 1px solid rgba(255, 192, 203, 0.7);
+				box-shadow:
+					0 0 14px rgba(255, 105, 180, 0.7),
+					0 0 32px rgba(255, 20, 147, 0.4);
+				white-space: nowrap;
+				transform-origin: center center;
+				pointer-events: auto; /* cho phép chạm/drag để xoay, scale */
+			}
+
+			/* Responsive cho mobile */
+			@media (max-width: 768px) {
+				.wish-text {
+					font-size: 0.9rem; /* Tăng font-size một chút để đọc tốt hơn */
+					padding: 0.35rem 1rem; /* Tăng padding để có không gian hơn */
+					max-width: 92vw; /* Tăng max-width để hiển thị nhiều chữ hơn */
+					min-width: 200px; /* Đảm bảo chiều rộng tối thiểu */
+					white-space: normal; /* Cho phép xuống dòng trên mobile */
+					word-wrap: break-word;
+					word-break: break-word; /* Ngắt từ tốt hơn */
+					display: -webkit-box;
+					-webkit-line-clamp: 2; /* Giới hạn tối đa 2 dòng */
+					line-clamp: 2; /* Thuộc tính chuẩn */
+					-webkit-box-orient: vertical;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					line-height: 1.5; /* Tăng line-height để đọc tốt hơn */
+				}
+			}
+
+			@media (max-width: 480px) {
+				.wish-text {
+					font-size: 0.8rem;
+					padding: 0.3rem 0.85rem;
+					max-width: 94vw; /* Tăng max-width trên mobile nhỏ */
+					min-width: 180px; /* Chiều rộng tối thiểu */
+					-webkit-line-clamp: 2; /* Vẫn giới hạn 2 dòng trên mobile nhỏ */
+					line-clamp: 2; /* Thuộc tính chuẩn */
+					line-height: 1.4;
+				}
+			}
+
+			/* Bay chậm đều từ dưới lên trên */
+			@keyframes wishFloatUp {
+				0% {
+					opacity: 0;
+					transform: translateX(-50%) translateY(10vh);
+				}
+				15% {
+					opacity: 1;
+				}
+				100% {
+					opacity: 0;
+					transform: translateX(-50%) translateY(-110vh);
+				}
+			}
+
+			.wish-animate {
+				animation: wishFloatUp 7s linear forwards;
+			}
+
+			/* Ảnh bay lên cùng câu chúc */
+			.wish-image {
+				display: inline-block;
+				width: 120px;
+				height: 120px;
+				object-fit: cover;
+				border-radius: 12px;
+				border: 3px solid rgba(255, 192, 203, 0.9);
+				box-shadow:
+					0 0 20px rgba(255, 105, 180, 0.8),
+					0 0 40px rgba(255, 20, 147, 0.6),
+					0 0 60px rgba(255, 20, 147, 0.4),
+					inset 0 0 20px rgba(255, 192, 203, 0.3);
+				transform-origin: center center;
+				pointer-events: auto;
+				animation: imageGlow 2s ease-in-out infinite alternate;
+			}
+
+			/* Responsive ảnh bay lên cho mobile */
+			@media (max-width: 768px) {
+				.wish-image {
+					width: 80px;
+					height: 80px;
+					border-width: 2px;
+					border-radius: 8px;
+				}
+			}
+
+			@media (max-width: 480px) {
+				.wish-image {
+					width: 60px;
+					height: 60px;
+					border-width: 2px;
+					border-radius: 6px;
+				}
+			}
+
+			/* Hiệu ứng phát sáng cho ảnh */
+			@keyframes imageGlow {
+				0% {
+					box-shadow:
+						0 0 20px rgba(255, 105, 180, 0.8),
+						0 0 40px rgba(255, 20, 147, 0.6),
+						0 0 60px rgba(255, 20, 147, 0.4),
+						inset 0 0 20px rgba(255, 192, 203, 0.3);
+					border-color: rgba(255, 192, 203, 0.9);
+				}
+				100% {
+					box-shadow:
+						0 0 30px rgba(255, 105, 180, 1),
+						0 0 60px rgba(255, 20, 147, 0.9),
+						0 0 90px rgba(255, 20, 147, 0.7),
+						inset 0 0 30px rgba(255, 192, 203, 0.5);
+					border-color: rgba(255, 255, 255, 1);
+				}
+			}
+
+			/* Wrapper cho ảnh */
+			.wish-image-wrapper {
+				position: absolute;
+				bottom: -3rem;
+				left: 50%;
+				transform: translateX(-50%) translateY(0);
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			/* Ẩn nút pause và nút cài đặt */
+			.pause-btn,
+			.settings-btn {
+				display: none !important;
+			}
+
+			/* Đảm bảo các nút điều khiển vẫn có thể click được */
+			.controls {
+				pointer-events: auto !important;
+				position: relative;
+				z-index: 20;
+			}
+
+			/* Đảm bảo menu vẫn có thể click được */
+			.menu {
+				pointer-events: auto !important;
+				position: relative;
+				z-index: 20;
+			}
+
+			/* Intro overlay */
+			.intro-overlay {
+				position: fixed;
+				inset: 0;
+				background: rgba(0, 0, 0, 0.85);
+				z-index: 1000;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				opacity: 1;
+				transition: opacity 0.5s ease-out;
+				overflow: hidden;
+			}
+
+			.intro-overlay .intro-text {
+			    /* 1. Reset ukuran kotak agar pas dengan layar */
+			    width: 100%;
+			    max-width: 100vw;
+			    box-sizing: border-box; /* PENTING: Biar padding gak bikin kotak melebar ke kanan */
+			    padding: 0 0.5rem; /* Kasih jarak aman 1rem di kiri dan kanan */
+
+			    /* 2. Ukuran font dinamis (Magic-nya di sini) */
+			    /* Artinya: Minimal ukuran 1.5rem, idealnya 10% dari lebar layar, maksimal 5rem */
+			    font-size: clamp(2rem, 10vw, 5rem); 
+
+			    /* 3. Posisi dan Teks */
+			    text-align: center;
+			    white-space: pre-line; /* Tetap pertahankan ini untuk membaca \n dari JS */
+			    word-wrap: normal;
+			    word-break: keep-all;
+
+			    /* Biarkan efek text-shadow kamu yang lama di bawah sini */
+			    font-family: 'Fredoka One', cursive !important;
+			    font-weight: 400;
+			    color: #ff9ad9;
+			    text-shadow:
+			        4px 4px 0 rgba(255, 107, 157, 0.8),
+			        8px 8px 0 rgba(196, 69, 105, 0.6),
+			        12px 12px 15px rgba(0, 0, 0, 0.5),
+			        0 0 15px rgba(255, 105, 180, 1),
+			        0 0 40px rgba(255, 20, 147, 0.9),
+			        0 0 70px rgba(255, 20, 147, 0.8),
+			        0 0 100px rgba(255, 20, 147, 0.6),
+			        0 0 150px rgba(255, 20, 147, 0.4),
+			        0 0 200px rgba(255, 20, 147, 0.3);
+			}
+
+			.intro-overlay.hide {
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			/* Nút Start */
+			.start-button-container {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.85);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				z-index: 1001;
+				transition: opacity 0.5s ease-out;
+			}
+
+			.start-button-container.hide {
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			.start-button {
+				display: inline-block;
+				font-family: 'Fredoka One', cursive !important;
+				font-size: 3rem;
+				font-weight: 400;
+				padding: 1.5rem 4rem;
+				border-radius: 999px;
+				color: #ff9ad9;
+				text-shadow:
+					0 0 6px rgba(255, 105, 180, 0.9),
+					0 0 18px rgba(255, 20, 147, 0.8);
+				background: rgba(0, 0, 0, 0.3);
+				border: 1px solid rgba(255, 192, 203, 0.7);
+				box-shadow:
+					0 0 14px rgba(255, 105, 180, 0.7),
+					0 0 32px rgba(255, 20, 147, 0.4);
+				cursor: pointer;
+				transition: all 0.3s ease;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+			}
+
+			.start-button:hover {
+				transform: scale(1.05);
+				border-color: rgba(255, 192, 203, 1);
+				box-shadow:
+					0 0 20px rgba(255, 105, 180, 0.9),
+					0 0 40px rgba(255, 20, 147, 0.6);
+			}
+
+			.start-button:active {
+				transform: scale(0.95);
+			}
+
+			/* Intro text - chỉ phát sáng chữ, không có viền khung */
+			.intro-text {
+				display: inline-block;
+				font-family: 'Fredoka One', cursive !important;
+				font-size: 5rem;
+				font-weight: 400;
+				padding: 1.5rem 3rem;
+				color: #ff9ad9;
+				text-shadow:
+					4px 4px 0 rgba(255, 107, 157, 0.8),
+					8px 8px 0 rgba(196, 69, 105, 0.6),
+					12px 12px 15px rgba(0, 0, 0, 0.5),
+					0 0 15px rgba(255, 105, 180, 1),
+					0 0 40px rgba(255, 20, 147, 0.9),
+					0 0 70px rgba(255, 20, 147, 0.8),
+					0 0 100px rgba(255, 20, 147, 0.6),
+					0 0 150px rgba(255, 20, 147, 0.4),
+					0 0 200px rgba(255, 20, 147, 0.3);
+				background: transparent;
+				border: none;
+				box-shadow: none;
+				transform-origin: center center;
+				letter-spacing: 4px;
+				/* text-transform: uppercase; */
+				text-align: center;
+				width: 100%;
+			}
+
+			/* Số đếm ngược */
+			.intro-countdown {
+				font-family: 'Fredoka One', cursive !important;
+				font-size: 10rem;
+				font-weight: 100;
+				letter-spacing: 4px;
+			}
+
+			/* Animation cho intro - đơn giản, tinh tế với phát sáng tỏa rộng */
+			@keyframes introAppear {
+				0% {
+					transform: scale(1.5);
+					opacity: 0;
+					text-shadow:
+						0 0 5px rgba(255, 105, 180, 0.5),
+						0 0 10px rgba(255, 20, 147, 0.4);
+				}
+				20% {
+					transform: scale(1);
+					opacity: 1;
+					text-shadow:
+						0 0 15px rgba(255, 105, 180, 1),
+						0 0 40px rgba(255, 20, 147, 0.9),
+						0 0 70px rgba(255, 20, 147, 0.8),
+						0 0 100px rgba(255, 20, 147, 0.6),
+						0 0 150px rgba(255, 20, 147, 0.4),
+						0 0 200px rgba(255, 20, 147, 0.3);
+				}
+				50% {
+					text-shadow:
+						0 0 20px rgba(255, 105, 180, 1),
+						
+				}
+				80%, 100% {
+					transform: scale(1);
+					opacity: 1;
+				}
+			}
+
+			.intro-text.animate-appear {
+				animation: introAppear 1s ease-out forwards;
+			}
+
+			/* Animation riêng cho HAPPY NEW YEAR - hiệu ứng in-out đẹp */
+			@keyframes happyNewYearIn {
+				0% {
+					transform: scale(0.3) translateY(50px);
+					opacity: 0;
+					filter: blur(10px);
+					text-shadow:
+						0 0 5px rgba(255, 105, 180, 0.3),
+						0 0 10px rgba(255, 20, 147, 0.2);
+				}
+				50% {
+					transform: scale(1.1) translateY(-10px);
+					opacity: 0.9;
+					filter: blur(2px);
+					text-shadow:
+						0 0 20px rgba(255, 105, 180, 0.9),
+						0 0 50px rgba(255, 20, 147, 0.8),
+						0 0 90px rgba(255, 20, 147, 0.6);
+				}
+				100% {
+					transform: scale(1) translateY(0);
+					opacity: 1;
+					filter: blur(0);
+					text-shadow:
+						0 0 15px rgba(255, 105, 180, 1),
+						0 0 40px rgba(255, 20, 147, 0.9),
+						0 0 70px rgba(255, 20, 147, 0.8),
+						0 0 100px rgba(255, 20, 147, 0.6),
+						0 0 150px rgba(255, 20, 147, 0.4),
+						0 0 200px rgba(255, 20, 147, 0.3);
+				}
+			}
+
+			@keyframes happyNewYearOut {
+				0% {
+					transform: scale(1) translateY(0);
+					opacity: 1;
+					filter: blur(0);
+				}
+				20% {
+					transform: scale(1.1) translateY(-10px);
+					opacity: 1;
+					filter: blur(0);
+				}
+				40% {
+					transform: scale(1.3) translateY(-20px);
+					opacity: 0.9;
+					filter: blur(1px);
+				}
+				60% {
+					transform: scale(1.8) translateY(-40px);
+					opacity: 0.7;
+					filter: blur(2px);
+				}
+				80% {
+					transform: scale(2.5) translateY(-60px);
+					opacity: 0.4;
+					filter: blur(4px);
+				}
+				100% {
+					transform: scale(4) translateY(-100px);
+					opacity: 0;
+					filter: blur(8px);
+				}
+			}
+
+			/* Class riêng cho HAPPY NEW YEAR */
+			.intro-text.happy-new-year.animate-appear {
+				animation: happyNewYearIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+			}
+
+			.intro-text.happy-new-year.fade-out {
+				animation: happyNewYearOut 2.5s ease-out forwards;
+				transform-origin: center center;
+			}
+
+			/* Responsive cho intro */
+			@media (max-width: 768px) {
+				.intro-text {
+					font-size: 5rem;
+					padding: 1rem 1.5rem;
+					letter-spacing: 2px;
+					text-align: center;
+				}
+
+				.intro-countdown {
+					font-size: 8rem;
+					letter-spacing: 2px;
+				}
+
+				.start-button {
+					font-size: 2rem;
+					padding: 1rem 2.5rem;
+				}
+			}
+
+			@media (max-width: 480px) {
+				.intro-text {
+					font-size: 3.5rem;
+					padding: 0.8rem 1rem;
+					letter-spacing: 1px;
+					text-align: center;
+				}
+
+				.intro-countdown {
+					font-size: 6rem;
+					letter-spacing: 1px;
+				}
+
+				.start-button {
+					font-size: 1.5rem;
+					padding: 0.8rem 2rem;
+				}
+			}
+			#orientation-lock {
+  		    position: fixed;
+  		    top: 0;
+  		    left: 0;
+  		    width: 100vw;
+  		    height: 100vh;
+  		    background: rgba(0, 0, 0, 0.96);
+  		    display: flex;
+  		    flex-direction: column;
+  		    justify-content: center;
+  		    align-items: center;
+  		    z-index: 99999;
+  		    color: #fff;
+  		    text-align: center;
+  		    font-family: 'Arial', sans-serif;
+  		    font-size: 18px;
+  		    display: none;
+  		    transition: background 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  		}
+	
+  		#orientation-lock .phone-icon {
+  		    font-size: 64px;
+  		    opacity: 0.92;
+  		    animation: phone-bounce-smooth 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  		    filter: drop-shadow(0 4px 16px #fff3);
+  		    transition: filter 0.4s, opacity 0.4s;
+  		}
+
+		/* Styling Tombol Stop Wishes (Teks Transparan & Posisi Bawah Tengah) */
+		.stop-wishes-text-btn {
+		    position: fixed;
+		    bottom: 12%; /* Jarak dari bawah, agak ke atas sedikit */
+		    left: 50%;
+		    transform: translateX(-50%); /* Agar persis di tengah secara horizontal */
+		    font-family: 'Fredoka One', cursive !important;
+		    font-size: 1.2rem;
+		    padding: 0.8rem 2rem;
+		    border-radius: 999px;
+		
+		    /* Warna teks dan background transparan */
+		    color: rgba(255, 154, 217, 0.8); 
+		    background: rgba(0, 0, 0, 0.4); 
+		    border: 1px solid rgba(255, 192, 203, 0.4);
+		    box-shadow: 0 0 10px rgba(255, 105, 180, 0.2);
+		
+		    /* Efek blur ala glassmorphism biar estetik */
+		    backdrop-filter: blur(4px);
+		    -webkit-backdrop-filter: blur(4px);
+		
+		    cursor: pointer;
+		    z-index: 100; /* Pastikan tombol selalu bisa di-klik di atas kanvas */
+		    transition: all 0.3s ease;
+		    text-transform: uppercase;
+		    letter-spacing: 2px;
+		}
+
+		/* Efek saat kursor menyentuh tombol (Hover) */
+		.stop-wishes-text-btn:hover {
+		    background: rgba(0, 0, 0, 0.6);
+		    color: #ff9ad9;
+		    border-color: rgba(255, 192, 203, 0.8);
+		    box-shadow: 0 0 15px rgba(255, 105, 180, 0.6);
+		    transform: translateX(-50%) scale(1.05); /* Membesar sedikit, tapi tetap di tengah */
+		}
+
+		/* Efek saat tombol diklik (Active) */
+		.stop-wishes-text-btn:active {
+		    transform: translateX(-50%) scale(0.95);
+		}
+
+		/* Penyesuaian ukuran untuk layar HP */
+		@media (max-width: 768px) {
+		    .stop-wishes-text-btn {
+		        font-size: 1rem;
+		        padding: 0.6rem 1.5rem;
+		        bottom: 10%; 
+		    }
+		}
+		</style>
+
+		<meta name="msapplication-TileImage" content="./ok.png" />
+		<link href="fonts/css.css" rel="stylesheet" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&display=swap" rel="stylesheet" />
+		<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
+		<link rel="stylesheet" href="css/style.css" />
+	</head>
+	<body>
+		<!-- Landscape Instruction -->
+		<div class="overlay">
+			<div id="orientation-lock">
+        	    <div class="phone-icon">
+        	        <img src="images/screen.png" alt="">
+        	    </div>
+        	</div>
+		</div>
+		<!-- partial:index.partial.html -->
+		<!-- SVG Spritesheet -->
+		<div style="height: 0; width: 0; position: absolute; visibility: hidden">
+			<svg xmlns="http://www.w3.org/2000/svg">
+				<symbol id="icon-play" viewBox="0 0 24 24">
+					<path d="M8 5v14l11-7z" />
+				</symbol>
+				<symbol id="icon-pause" viewBox="0 0 24 24">
+					<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+				</symbol>
+				<symbol id="icon-close" viewBox="0 0 24 24">
+					<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+				</symbol>
+				<symbol id="icon-settings" viewBox="0 0 24 24">
+					<path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" />
+				</symbol>
+				<symbol id="icon-sound-on" viewBox="0 0 24 24">
+					<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+				</symbol>
+				<symbol id="icon-sound-off" viewBox="0 0 24 24">
+					<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
+				</symbol>
+				<symbol id="icon-stop-wishes" viewBox="0 0 24 24">
+					<path d="M6 6h12v12H6z" />
+				</symbol>
+			</svg>
+		</div>
+		<!-- Intro Overlay -->
+		<!-- Nút Start -->
+		<div class="start-button-container" id="startButtonContainer">
+			<button class="start-button" id="startButton">START</button>
+		</div>
+
+		<div class="intro-overlay" id="introOverlay">
+			<div class="intro-text" id="introText">3</div>
+		</div>
+
+		<!-- App -->
+		<div class="container">
+			<div class="stage-container remove">
+				<!-- Layer lời chúc bay trên trời -->
+				<div class="wishes-layer" id="wishes-layer"></div>
+				<div class="canvas-container">
+					<canvas id="trails-canvas"> </canvas>
+					<canvas id="main-canvas"> </canvas>
+				</div>
+				<div class="controls">
+					<div class="btn pause-btn">
+						<svg fill="white" width="24" height="24">
+							<use href="#icon-pause" xlink:href="#icon-pause"></use>
+						</svg>
+					</div>
+					<div class="btn sound-btn">
+						<svg fill="white" width="24" height="24">
+							<use href="#icon-sound-off" xlink:href="#icon-sound-off"></use>
+						</svg>
+					</div>
+					<!-- <div class="btn stop-wishes-btn">
+						<svg fill="white" width="24" height="24">
+							<use href="#icon-stop-wishes" xlink:href="#icon-stop-wishes"></use>
+						</svg>
+					</div> -->
+					<div class="btn settings-btn">
+						<svg fill="white" width="24" height="24">
+							<use href="#icon-settings" xlink:href="#icon-settings"></use>
+						</svg>
+					</div>
+				</div>
+
+				<button class="stop-wishes-btn stop-wishes-text-btn">CLOSE</button>
+
+				<div class="menu hide">
+					<div class="menu__inner-wrap">
+						<div class="btn btn--bright close-menu-btn">
+							<svg fill="white" width="24" height="24">
+								<use href="#icon-close" xlink:href="#icon-close"></use>
+							</svg>
+						</div>
+						<div class="menu__header">Cài đặt</div>
+						<div class="menu__subheader">Để biết thêm thông tin hãy nhấp vào bất kỳ nhãn nào</div>
+						<form>
+							<div class="form-option form-option--select">
+								<label class="shell-type-label"> Loại pháo hoa </label>
+								<select class="shell-type"></select>
+							</div>
+							<div class="form-option form-option--select">
+								<label class="shell-size-label"> Kích thước pháo hoa </label>
+								<select class="shell-size"></select>
+							</div>
+							<div class="form-option form-option--select">
+								<label class="quality-ui-label"> Chất lượng hiển thị </label>
+								<select class="quality-ui"></select>
+							</div>
+							<div class="form-option form-option--select">
+								<label class="sky-lighting-label"> Độ sáng bầu trời </label>
+								<select class="sky-lighting"></select>
+							</div>
+							<div class="form-option form-option--select">
+								<label class="scaleFactor-label"> Thu phóng </label>
+								<select class="scaleFactor"></select>
+							</div>
+							<div class="form-option form-option--checkbox">
+								<label class="word-shell-label"> Pháo hoa chữ </label>
+								<input class="word-shell" type="checkbox" />
+							</div>
+							<div class="form-option form-option--checkbox">
+								<label class="auto-launch-label"> Tự động bắn pháo </label>
+								<input class="auto-launch" type="checkbox" />
+							</div>
+							<div class="form-option form-option--checkbox form-option--finale-mode">
+								<label class="finale-mode-label"> Bắn nhiều pháo hoa cùng lúc </label>
+								<input class="finale-mode" type="checkbox" />
+							</div>
+							<div class="form-option form-option--checkbox">
+								<label class="hide-controls-label"> Ẩn nút điều khiển </label>
+								<input class="hide-controls" type="checkbox" />
+							</div>
+							<div class="form-option form-option--checkbox form-option--fullscreen">
+								<label class="fullscreen-label"> Toàn màn hình </label>
+								<input class="fullscreen" type="checkbox" />
+							</div>
+							<div class="form-option form-option--checkbox">
+								<label class="long-exposure-label"> Giữ vệt sáng pháo hoa </label>
+								<input class="long-exposure" type="checkbox" />
+							</div>
+						</form>
+						<div class="credits">
+							<p class="copyright">
+								<script>
+									var mydate = new Date();
+									document.writeln("Copyright&nbsp;&copy;&nbsp;2021 - " + mydate.getFullYear() + '&nbsp;<a target="_blank" href="https://www.nianbroken.top/">碎念_Nian</a><br />All&nbsp;Rights&nbsp;Reserved');
+								</script>
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="help-modal">
+				<div class="help-modal__overlay"></div>
+				<div class="help-modal__dialog">
+					<div class="help-modal__header"></div>
+					<div class="help-modal__body"></div>
+					<button type="button" class="help-modal__close-btn">Đóng</button>
+				</div>
+			</div>
+		</div>
+		<script>
+			// --- Logika untuk menyembunyikan tombol HIDE WISHES setelah diklik ---
+            const stopWishesBtn = document.querySelector('.stop-wishes-text-btn');
+            
+            if (stopWishesBtn) {
+                stopWishesBtn.addEventListener('click', function() {
+                    // Kode ini membuat tombol menghilang secara perlahan
+                    this.style.opacity = '0';
+                    this.style.pointerEvents = 'none';
+                    
+                    // (Opsional) Hapus sepenuhnya dari dokumen setelah animasinya selesai
+                    setTimeout(() => {
+                        this.style.display = 'none';
+                    }, 300);
+                });
+            }
+            // --- Cek Orientasi Layar (Disesuaikan untuk project ini) ---
+            let isLandscape = true;
+            function checkOrientation() {
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const orientationLock = document.getElementById('orientation-lock');
+                const mainCanvas = document.querySelector('.canvas-container'); // Disesuaikan dengan struktur HTML ini
+
+                if (!isMobile) {
+                    isLandscape = true;
+                    if(orientationLock) orientationLock.style.display = 'none';
+                    if(mainCanvas) mainCanvas.style.display = 'block';
+                    if(typeof startWebsite === 'function') startWebsite();
+                } else {
+                    const mediaQuery = window.matchMedia("(orientation: landscape)");
+                    isLandscape = mediaQuery.matches;
+                    
+                    if (isLandscape) {
+                        if(orientationLock) orientationLock.style.display = 'none';
+                        if(mainCanvas) mainCanvas.style.display = 'block';
+                        if(typeof startWebsite === 'function') startWebsite();
+                        
+                        setTimeout(() => {
+                            if(typeof forceResizeMatrix === 'function') forceResizeMatrix();
+                        }, 100);
+                    } else {
+                        if(orientationLock) orientationLock.style.display = 'flex';
+                        if(mainCanvas) mainCanvas.style.display = 'none';
+                        if(typeof stopWebsite === 'function') stopWebsite();
+                    }
+                
+                    mediaQuery.addEventListener('change', (e) => {
+                        isLandscape = e.matches;
+                        if (isLandscape) {
+                            if(orientationLock) orientationLock.style.display = 'none';
+                            if(mainCanvas) mainCanvas.style.display = 'block';
+                            if(typeof startWebsite === 'function') startWebsite();
+                        
+                            setTimeout(() => {
+                                if(typeof forceResizeMatrix === 'function') forceResizeMatrix();
+                            }, 100);
+                        } else {
+                            if(orientationLock) orientationLock.style.display = 'flex';
+                            if(mainCanvas) mainCanvas.style.display = 'none';
+                            if(typeof stopWebsite === 'function') stopWebsite();
+                        }
+                    });
+                }
+            }
+
+            // --- Setup Audio & Tombol Start ---
+            const bgMusic = new Audio('music/music.mp3');
+            bgMusic.loop = true; // Musik diulang terus menerus
+            let isPlaying = false;
+
+            const startBtnContainer = document.getElementById('startButtonContainer');
+            const startBtn = document.getElementById('startButton');
+
+            if (startBtn) {
+                startBtn.addEventListener('click', () => {
+                    // 1. Sembunyikan container tombol start
+                    startBtnContainer.classList.add('hide');
+
+                    // 2. Mainkan musik
+                    if (!isPlaying) {
+                        bgMusic.play().then(() => {
+                            isPlaying = true;
+                            // Ubah icon sound di pojok (jika ada) menjadi mode ON
+                            const soundIcon = document.querySelector('.sound-btn use');
+                            if (soundIcon) {
+                                soundIcon.setAttribute('href', '#icon-sound-on');
+                                soundIcon.setAttribute('xlink:href', '#icon-sound-on');
+                            }
+                        }).catch(error => {
+                            console.log("Browser memblokir autoplay audio:", error);
+                        });
+                    }
+
+                    // Catatan: Pastikan animasi intro text (3, 2, 1) di-trigger dari js/script.js 
+                    // atau berjalan otomatis setelah startBtnContainer disembunyikan.
+                });
+            }
+
+            // --- Toggle Play/Pause Musik dari Tombol Pengaturan ---
+            const soundBtn = document.querySelector('.sound-btn');
+            if (soundBtn) {
+                soundBtn.addEventListener('click', () => {
+                    const soundIcon = soundBtn.querySelector('use');
+                    if (isPlaying) {
+                        bgMusic.pause();
+                        isPlaying = false;
+                        soundIcon.setAttribute('href', '#icon-sound-off');
+                        soundIcon.setAttribute('xlink:href', '#icon-sound-off');
+                    } else {
+                        bgMusic.play();
+                        isPlaying = true;
+                        soundIcon.setAttribute('href', '#icon-sound-on');
+                        soundIcon.setAttribute('xlink:href', '#icon-sound-on');
+                    }
+                });
+            }
+        </script>
+		<script src="detect-devtools.js"></script>
+		<script type='text/javascript'>
+			  // Bypass for developers
+			  const keyName = 'key';
+			  const keyValue = '9ac7ec230e0e4513578f309d6d3579ad';
+	  
+			  // Handle via config
+			  DisableDevtool({
+				  tkName: keyName,
+				  md5: keyValue,
+				  interval: '100',
+			  });
+		  </script>
+		<!-- partial -->
+		<script src="js/fscreen.js"></script>
+		<script src="js/Stage.js"></script>
+		<script src="js/MyMath.js"></script>
+		<script src="js/script.js"></script>
+	</body>
+</html>
