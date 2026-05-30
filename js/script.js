@@ -552,7 +552,7 @@ store.subscribe(handleStateChange);
 const WISH_MESSAGES = [
     "Another year, another reason to smile. ✨. ❤️",
     "Wishing you a year filled with little moments worth remembering.",
-    "Waktu berlalu, tapi rasa ini tetap sama. Always.",
+    "May this chapter be your prettiest one yet. 🤍",
     "Like the moon, you shine differently each season, yet beautifully every time.💕",
     "eep blooming, the world looks better with your colors in it. 🌸",
     "May this year be filled with things that make your soul happy. 🤍",
