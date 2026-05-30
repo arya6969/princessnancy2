@@ -74,7 +74,7 @@ let imageSources = [
 	"./images/b1.png",
 	"./images/b2.png",
 	"./images/b3.png",
-	"./images/b4.jpg",
+	"./images/b4.png",
 	"./images/b5.png",
 ];
 const loadedImages = [];
@@ -550,14 +550,14 @@ store.subscribe(handleStateChange);
 
 // custom2
 const WISH_MESSAGES = [
-    "Another year, another petal-your bloom only grows more beautiful with time ❤️",
-    "You’re still the one who easily catches my attention. ✨",
-    "Just watching you from here, and that’s more than enough for me.",
-    "We’re not a “we,” but you’re still special to me. 💕",
+    "Happy Anniversary, my love... masih kamu, selalu kamu. ❤️",
+    "Another year with you, Anita. Still my best decision. ✨",
+    "Waktu berlalu, tapi rasa ini tetap sama. Always.",
+    "Happy anniversary to us — masih memilihmu, setiap harinya. 💕",
     "You're my favorite person. Sekarang dan seterusnya.",
-    "Still my favorite person to think about for no reason. 🤍",
-    "Loving you never gets old, Nancy.",
-    "Thank you for existing in my little corner of thoughts. ✨",
+    "Still you, still us. Tidak ada yang ingin aku ubah. 🤍",
+    "Loving you never gets old, Anita.",
+    "Terima kasih sudah ada. You mean everything. ✨",
 ];
 
 // Hàm helper để tính toán vị trí ngang phân bố đều hơn, tránh khoảng trống
@@ -1610,7 +1610,7 @@ function startIntro() {
 			showIntroText(countdown, true);
 			// CUSTOM1
 			setTimeout(() => {
-				showIntroText('Happy Birthday Nancy\n💗', false);
+				showIntroText('Happy Birthday Anita Sayang\n💗', false);
 				
 				// Sau khi "HAPPY NEW YEAR" hiển thị 1 giây (0.8s animation + 0.2s), bắt đầu pháo hoa ngay
 				setTimeout(() => {
